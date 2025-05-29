@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h3 class="card-title mb-0">
+                    <i class="bi bi-clock-history"></i> Login History
+                </h3>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    Review your recent login activity. If you see any suspicious activity, 
+                    please change your password immediately.
+                </p>
+                
+                {% if locations %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th><i class="bi bi-calendar"></i> Date & Time</th>
+                                <th><i class="bi bi-geo-alt"></i> Location</th>
+                                <th><i class="bi bi-globe"></i> IP Address</th>
+                                <th><i class="bi bi-device-hdd"></i> Device</th>
+                                <th><i class="bi bi-shield-check"></i> Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for location in locations %}
+                            <tr>
+                                <td>
+                                    <strong>{{ location.login_time.strftime('%Y-%m-%d') }}</strong><br>
+                                    <small class="text-muted">{{ location.login_time.strftime('%H:%M:%S UTC') }}</small>
+                                </td>
+                                <td>
+                                    <div>
+                                        <i class="bi bi-geo-alt-fill text-primary"></i>
+                                        <strong>{{ location.location_display }}</strong>
+                                    </div>
+                                    {% if location.coordinates %}
+                                    <small class="text-muted">
+                                        {{ "%.4f"|format(location.latitude) }}, {{ "%.4f"|format(location.longitude) }}
+                                    </small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <code>{{ location.ip_address }}</code>
+                                </td>
+                                <td>
+                                    {% if location.user_agent %}
+                                    <small class="text-muted" title="{{ location.user_agent }}">
+                                        {% if 'Chrome' in location.user_agent %}
+                                            <i class="bi bi-browser-chrome text-warning"></i> Chrome
+                                        {% elif 'Firefox' in location.user_agent %}
+                                            <i class="bi bi-browser-firefox text-orange"></i> Firefox
+                                        {% elif 'Safari' in location.user_agent %}
+                                            <i class="bi bi-browser-safari text-info"></i> Safari
+                                        {% elif 'Edge' in location.user_agent %}
+                                            <i class="bi bi-browser-edge text-primary"></i> Edge
+                                        {% else %}
+                                            <i class="bi bi-device-hdd"></i> Unknown
+                                        {% endif %}
+                                        
+                                        {% if 'Mobile' in location.user_agent or 'Android' in location.user_agent or 'iPhone' in location.user_agent %}
+                                            <i class="bi bi-phone text-success"></i>
+                                        {% else %}
+                                            <i class="bi bi-laptop text-secondary"></i>
+                                        {% endif %}
+                                    </small>
+                                    {% else %}
+                                    <small class="text-muted">Unknown Device</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if location.is_approved %}
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-check-circle"></i> Trusted
+                                        </span>
+                                        {% if location.approved_at %}
+                                        <br><small class="text-muted">
+                                            Approved: {{ location.approved_at.strftime('%Y-%m-%d %H:%M') }}
+                                        </small>
+                                        {% endif %}
+                                    {% elif location.is_suspicious %}
+                                        <span class="badge bg-warning">
+                                            <i class="bi bi-exclamation-triangle"></i> Suspicious
+                                        </span>
+                                        <br><small class="text-muted">Pending approval</small>
+                                    {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="bi bi-question-circle"></i> Unknown
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination would go here for large datasets -->
+                {% if locations|length == 50 %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    Showing the most recent 50 login attempts. Older entries are automatically archived.
+                </div>
+                {% endif %}
+                
+                {% else %}
+                <div class="alert alert-info text-center">
+                    <i class="bi bi-info-circle-fill"></i>
+                    <h5>No Login History</h5>
+                    <p class="mb-0">This appears to be your first login, or login tracking was recently enabled.</p>
+                </div>
+                {% endif %}
+                
+                <!-- Security Information -->
+                <div class="mt-4">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card border-info">
+                                <div class="card-body">
+                                    <h6 class="card-title text-info">
+                                        <i class="bi bi-shield-check"></i> Security Features
+                                    </h6>
+                                    <ul class="list-unstyled mb-0 small">
+                                        <li><i class="bi bi-check text-success"></i> Automatic location tracking</li>
+                                        <li><i class="bi bi-check text-success"></i> Suspicious login detection</li>
+                                        <li><i class="bi bi-check text-success"></i> Email alerts for new locations</li>
+                                        <li><i class="bi bi-check text-success"></i> Two-factor authentication</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-warning">
+                                <div class="card-body">
+                                    <h6 class="card-title text-warning">
+                                        <i class="bi bi-exclamation-triangle"></i> Security Tips
+                                    </h6>
+                                    <ul class="list-unstyled mb-0 small">
+                                        <li><i class="bi bi-arrow-right text-muted"></i> Review this page regularly</li>
+                                        <li><i class="bi bi-arrow-right text-muted"></i> Report suspicious activity</li>
+                                        <li><i class="bi bi-arrow-right text-muted"></i> Use strong, unique passwords</li>
+                                        <li><i class="bi bi-arrow-right text-muted"></i> Keep your devices secure</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="mt-4 text-center">
+                    <a href="{{ url_for('main.dashboard') }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Dashboard
+                    </a>
+                    <a href="{{ url_for('main.profile') }}" class="btn btn-primary">
+                        <i class="bi bi-person-gear"></i> Security Settings
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Add tooltips for better UX
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
+    var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+</script>
+{% endblock %}

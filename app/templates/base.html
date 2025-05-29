@@ -75,9 +75,13 @@
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
                             <i class="bi bi-person-circle"></i> {{ current_user.username }}
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ url_for('main.profile') }}">Profile</a></li>
+                        </a>                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('main.profile') }}">
+                                <i class="bi bi-person"></i> Profile
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('auth.login_history') }}">
+                                <i class="bi bi-clock-history"></i> Login History
+                            </a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">Logout</a></li>
                         </ul>

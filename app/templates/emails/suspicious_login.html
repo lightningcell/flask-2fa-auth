@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Suspicious Login Detected</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background-color: #dc3545;
+            color: white;
+            padding: 20px;
+            border-radius: 8px 8px 0 0;
+            text-align: center;
+            margin: -20px -20px 20px -20px;
+        }
+        .alert-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        .location-info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            border-left: 4px solid #dc3545;
+        }
+        .action-button {
+            display: inline-block;
+            background-color: #28a745;
+            color: white !important;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .security-info {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            color: #6c757d;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="alert-icon">🔐</div>
+            <h1>Suspicious Login Detected</h1>
+        </div>
+        
+        <p>Hello <strong>{{ user_name }}</strong>,</p>
+        
+        <p>We detected a login to your {{ app_name }} account from a new or unusual location. If this was you, please approve this location by clicking the button below.</p>
+        
+        <div class="location-info">
+            <h3>📍 Login Details:</h3>
+            <ul>
+                <li><strong>Location:</strong> {{ location.city or 'Unknown' }}{% if location.region %}, {{ location.region }}{% endif %}{% if location.country %}, {{ location.country }}{% endif %}</li>
+                <li><strong>Time:</strong> {{ login_time }}</li>
+                <li><strong>IP Address:</strong> {{ location.ip_address or 'Hidden for privacy' }}</li>
+                {% if location.distance_km %}
+                <li><strong>Distance from last login:</strong> {{ location.distance_km }} km</li>
+                {% endif %}
+            </ul>
+        </div>
+        
+        <h3>⚠️ Action Required</h3>
+        <p>If this login was authorized by you, please approve this location by clicking the button below:</p>
+        
+        <div style="text-align: center;">
+            <a href="{{ approval_url }}" class="action-button">
+                ✅ Approve This Location
+            </a>
+        </div>
+        
+        <div class="security-info">
+            <h4>🛡️ Security Notice:</h4>
+            <ul>
+                <li>If you did not attempt to log in, your account may be compromised</li>
+                <li>Change your password immediately if this login was not authorized</li>
+                <li>Enable two-factor authentication for additional security</li>
+                <li>This approval link expires in 24 hours</li>
+            </ul>
+        </div>
+        
+        <p><strong>If you did not make this login attempt:</strong></p>
+        <ol>
+            <li>Do not click the approval button</li>
+            <li>Change your password immediately</li>
+            <li>Review your account for any suspicious activity</li>
+            <li>Contact support if you need assistance</li>
+        </ol>
+        
+        <div class="footer">
+            <p>This email was sent from {{ app_name }} security system.</p>
+            <p>For your security, do not forward this email or share the approval link.</p>
+            <p>&copy; 2025 {{ app_name }}. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

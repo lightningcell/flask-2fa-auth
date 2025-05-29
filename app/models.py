@@ -145,3 +145,82 @@ def validate_password_hash(target, value, oldvalue, initiator):
     """Ensure password hash is never stored as plaintext."""
     if value and not value.startswith('pbkdf2:sha256'):
         raise ValueError("Password must be hashed before storage")
+
+
+class LoginLocation(db.Model):
+    """
+    Model to track user login locations for security monitoring.
+    
+    Security features:
+    - IP address tracking
+    - Geolocation data storage
+    - Login attempt tracking
+    - Suspicious activity detection
+    """
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    ip_address = db.Column(db.String(45), nullable=False)  # IPv6 support
+    country = db.Column(db.String(100))
+    region = db.Column(db.String(100))
+    city = db.Column(db.String(100))
+    latitude = db.Column(db.Float)
+    longitude = db.Column(db.Float)
+    user_agent = db.Column(db.Text)
+    is_approved = db.Column(db.Boolean, default=False, nullable=False)
+    is_suspicious = db.Column(db.Boolean, default=False, nullable=False)
+    login_time = db.Column(db.DateTime, default=db.func.current_timestamp())
+    approved_at = db.Column(db.DateTime)
+    
+    # Relationship
+    user = db.relationship('User', backref=db.backref('login_locations', lazy=True, 
+                                                     order_by='LoginLocation.login_time.desc()'))
+    
+    def __repr__(self):
+        return f'<LoginLocation {self.user_id}: {self.city}, {self.country} at {self.login_time}>'
+    
+    @property
+    def location_display(self):
+        """Human-readable location string."""
+        parts = []
+        if self.city:
+            parts.append(self.city)
+        if self.region and self.region != self.city:
+            parts.append(self.region)
+        if self.country:
+            parts.append(self.country)
+        return ', '.join(parts) if parts else 'Unknown Location'
+    
+    @property
+    def coordinates(self):
+        """Return coordinates as tuple if available."""
+        if self.latitude is not None and self.longitude is not None:
+            return (self.latitude, self.longitude)
+        return None
+
+
+class LocationApprovalToken(db.Model):
+    """
+    Model for secure location approval tokens sent via email.
+    
+    Security features:
+    - Cryptographically secure token generation
+    - Token expiration
+    - One-time use tokens
+    """
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    location_id = db.Column(db.Integer, db.ForeignKey('login_location.id'), nullable=False)
+    token = db.Column(db.String(255), nullable=False, unique=True)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    expires_at = db.Column(db.DateTime, nullable=False)
+    used_at = db.Column(db.DateTime)
+    is_used = db.Column(db.Boolean, default=False, nullable=False)
+    
+    # Relationships
+    user = db.relationship('User', backref=db.backref('location_tokens', lazy=True))
+    location = db.relationship('LoginLocation', backref=db.backref('approval_tokens', lazy=True))
+    
+    def __repr__(self):
+        return f'<LocationApprovalToken {self.token[:8]}... for user {self.user_id}>'

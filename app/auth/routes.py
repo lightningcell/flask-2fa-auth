@@ -1,10 +1,13 @@
 from flask import render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, current_user, login_required
 from urllib.parse import urlparse
+from datetime import datetime, timedelta
 from app import db
 from app.auth import bp
 from app.auth.forms import RegistrationForm, LoginForm, TwoFactorForm
-from app.models import User
+from app.models import User, LoginLocation, LocationApprovalToken
+from app.utils.location import location_service
+from app.utils.mail import mail_service
 import logging
 
 # Configure logging for security events
@@ -155,6 +158,9 @@ def verify_otp():
             if not user.is_2fa_enabled:
                 user.enable_2fa()
             
+            # Track login location
+            success = track_login_location(user)
+            
             # Update last login timestamp
             user.last_login = db.func.current_timestamp()
             db.session.commit()
@@ -166,11 +172,16 @@ def verify_otp():
             # Complete login process
             login_user(user, remember=remember_me)
             
+            # Show appropriate message based on location tracking
+            if success:
+                flash('Login successful!', 'success')
+            else:
+                flash('Login successful! Check your email for location verification.', 'info')
+            
             # Log successful login
             logger.info(f'Successful login for user: {user.username}')
             
-            flash('Login successful!', 'success')
-              # Redirect to originally requested page or dashboard
+            # Redirect to originally requested page or dashboard
             next_page = request.args.get('next')
             if not next_page or urlparse(next_page).netloc != '':
                 next_page = url_for('main.index')
@@ -221,3 +232,162 @@ def disable_2fa():
         flash('Failed to disable two-factor authentication.', 'error')
     
     return redirect(url_for('main.profile'))
+
+
+def track_login_location(user):
+    """
+    Track user login location and handle suspicious login detection.
+    
+    Args:
+        user: User object
+        
+    Returns:
+        bool: True if location is trusted, False if suspicious (email sent)
+    """
+    try:
+        # Get current IP and location data
+        ip_address = location_service.get_client_ip()
+        user_agent = location_service.get_user_agent()
+        location_data = location_service.get_location_from_ip(ip_address)
+        
+        # Check if location is suspicious
+        is_suspicious, last_location = location_service.is_suspicious_location(
+            user.id, location_data
+        )
+        
+        # Create login location record
+        login_location = LoginLocation(
+            user_id=user.id,
+            ip_address=ip_address,
+            country=location_data.get('country'),
+            region=location_data.get('region'),
+            city=location_data.get('city'),
+            latitude=location_data.get('latitude'),
+            longitude=location_data.get('longitude'),
+            user_agent=user_agent,
+            is_approved=not is_suspicious,
+            is_suspicious=is_suspicious
+        )
+        
+        db.session.add(login_location)
+        db.session.commit()
+        
+        # Handle suspicious login
+        if is_suspicious:
+            # Create approval token
+            token = LocationApprovalToken.generate_token()
+            approval_token = LocationApprovalToken(
+                user_id=user.id,
+                location_id=login_location.id,
+                token=token,
+                expires_at=datetime.utcnow() + timedelta(hours=24)
+            )
+            
+            db.session.add(approval_token)
+            db.session.commit()
+            
+            # Prepare location data for email
+            email_location_data = {
+                'city': location_data.get('city'),
+                'region': location_data.get('region'),
+                'country': location_data.get('country'),
+                'ip_address': ip_address,
+                'distance_km': last_location.get('distance_km') if last_location else None
+            }
+            
+            # Send suspicious login alert email
+            mail_service.send_suspicious_login_alert(
+                user.email,
+                user.username,
+                email_location_data,
+                token
+            )
+            
+            logger.warning(f"Suspicious login detected for user {user.username} from {location_data.get('city', 'Unknown')}")
+            return False
+        
+        logger.info(f"Trusted location login for user {user.username} from {location_data.get('city', 'Unknown')}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Error tracking login location for user {user.username}: {str(e)}")
+        # On error, allow login but log the issue
+        return True
+
+
+@bp.route('/approve-location/<token>')
+def approve_location(token):
+    """
+    Approve a suspicious login location via email link.
+    
+    Args:
+        token: Location approval token from email
+    """
+    try:
+        # Find and validate token
+        approval_token = LocationApprovalToken.query.filter_by(token=token).first()
+        
+        if not approval_token:
+            flash('Invalid or expired approval link.', 'error')
+            return redirect(url_for('main.index'))
+        
+        if not approval_token.is_valid():
+            flash('This approval link has expired or already been used.', 'error')
+            return redirect(url_for('main.index'))
+        
+        # Mark location as approved
+        location = approval_token.location
+        location.is_approved = True
+        location.is_suspicious = False
+        location.approved_at = datetime.utcnow()
+        
+        # Mark token as used
+        approval_token.is_used = True
+        approval_token.used_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        # Send confirmation email
+        user = approval_token.user
+        location_data = {
+            'city': location.city,
+            'region': location.region,
+            'country': location.country
+        }
+        
+        mail_service.send_location_approved_notification(
+            user.email,
+            user.username,
+            location_data
+        )
+        
+        logger.info(f"Location approved for user {user.username}: {location.location_display}")
+        flash('Location approved successfully! This location is now trusted.', 'success')
+        
+    except Exception as e:
+        logger.error(f"Error approving location with token {token}: {str(e)}")
+        flash('An error occurred while approving the location.', 'error')
+    
+    return redirect(url_for('main.index'))
+
+
+@bp.route('/login-history')
+@login_required
+def login_history():
+    """
+    Display user's login history and location data.
+    """
+    try:
+        # Get user's login locations ordered by most recent
+        locations = LoginLocation.query.filter_by(
+            user_id=current_user.id
+        ).order_by(LoginLocation.login_time.desc()).limit(50).all()
+        
+        return render_template('auth/login_history.html', 
+                             locations=locations, 
+                             title='Login History')
+        
+    except Exception as e:
+        logger.error(f"Error loading login history for user {current_user.username}: {str(e)}")
+        flash('Error loading login history.', 'error')
+        return redirect(url_for('main.dashboard'))
