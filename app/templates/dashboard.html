@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <div class="card bg-success text-white mb-4">
+            <div class="card-body">
+                <h2 class="mb-0">
+                    <i class="bi bi-speedometer2"></i> Welcome to Your Dashboard, {{ user.username }}!
+                </h2>
+                <p class="mb-0">You have successfully logged in with two-factor authentication.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="bi bi-person-circle display-4 text-primary mb-3"></i>
+                <h5 class="card-title">Account Information</h5>
+                <p class="card-text">View and manage your account settings and security preferences.</p>
+                <a href="{{ url_for('main.profile') }}" class="btn btn-primary">
+                    <i class="bi bi-gear"></i> Manage Profile
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="bi bi-shield-check display-4 text-success mb-3"></i>
+                <h5 class="card-title">Security Status</h5>
+                <p class="card-text">
+                    {% if user.is_2fa_enabled %}
+                        <span class="badge bg-success">2FA Enabled</span>
+                    {% else %}
+                        <span class="badge bg-warning">2FA Setup Required</span>
+                    {% endif %}
+                </p>
+                <a href="{{ url_for('main.profile') }}" class="btn btn-outline-success">
+                    <i class="bi bi-shield-lock"></i> Security Settings
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="bi bi-clock-history display-4 text-info mb-3"></i>
+                <h5 class="card-title">Last Login</h5>
+                <p class="card-text">
+                    {% if user.last_login %}
+                        {{ user.last_login.strftime('%Y-%m-%d %H:%M:%S') }}
+                    {% else %}
+                        First login - Welcome!
+                    {% endif %}
+                </p>
+                <small class="text-muted">Keep track of your account activity</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="bi bi-activity"></i> Account Activity</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Account Details</h6>
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Username:</strong></td>
+                                <td>{{ user.username }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Email:</strong></td>
+                                <td>{{ user.email }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Account Created:</strong></td>
+                                <td>{{ user.created_at.strftime('%Y-%m-%d') if user.created_at else 'N/A' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>2FA Status:</strong></td>
+                                <td>
+                                    {% if user.is_2fa_enabled %}
+                                        <span class="badge bg-success">
+                                            <i class="bi bi-check-circle"></i> Enabled
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-warning">
+                                            <i class="bi bi-exclamation-triangle"></i> Setup Required
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6>Security Recommendations</h6>
+                        <div class="list-group">
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="bi bi-check-circle text-success"></i>
+                                    Strong password in use
+                                </div>
+                                <span class="badge bg-success rounded-pill">✓</span>
+                            </div>
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="bi bi-{% if user.is_2fa_enabled %}check-circle text-success{% else %}exclamation-triangle text-warning{% endif %}"></i>
+                                    Two-factor authentication
+                                </div>
+                                <span class="badge bg-{% if user.is_2fa_enabled %}success{% else %}warning{% endif %} rounded-pill">
+                                    {% if user.is_2fa_enabled %}✓{% else %}!{% endif %}
+                                </span>
+                            </div>
+                            <div class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="bi bi-check-circle text-success"></i>
+                                    Secure session active
+                                </div>
+                                <span class="badge bg-success rounded-pill">✓</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-lightbulb"></i> Security Tips</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-arrow-right text-primary"></i> Always log out when using shared computers</li>
+                            <li><i class="bi bi-arrow-right text-primary"></i> Keep your authenticator app backed up</li>
+                            <li><i class="bi bi-arrow-right text-primary"></i> Use unique passwords for all accounts</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <ul class="list-unstyled">
+                            <li><i class="bi bi-arrow-right text-primary"></i> Never share your 2FA codes with anyone</li>
+                            <li><i class="bi bi-arrow-right text-primary"></i> Check for suspicious account activity regularly</li>
+                            <li><i class="bi bi-arrow-right text-primary"></i> Update your password periodically</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

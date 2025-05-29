@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="bi bi-person-circle"></i> Profile Information</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Account Details</h5>
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Username:</strong></td>
+                                <td>{{ user.username }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Email:</strong></td>
+                                <td>{{ user.email }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Account ID:</strong></td>
+                                <td>{{ user.id }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Member Since:</strong></td>
+                                <td>{{ user.created_at.strftime('%B %d, %Y') if user.created_at else 'N/A' }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Last Login:</strong></td>
+                                <td>{{ user.last_login.strftime('%Y-%m-%d %H:%M:%S') if user.last_login else 'First login' }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5>Quick Actions</h5>
+                        <div class="d-grid gap-2">
+                            <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary">
+                                <i class="bi bi-speedometer2"></i> Dashboard
+                            </a>
+                            <button type="button" class="btn btn-outline-secondary" disabled>
+                                <i class="bi bi-pencil"></i> Edit Profile (Coming Soon)
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" disabled>
+                                <i class="bi bi-key"></i> Change Password (Coming Soon)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="bi bi-shield-lock"></i> Security Settings</h4>
+            </div>
+            <div class="card-body">
+                <div class="security-status mb-3">
+                    <h6>Two-Factor Authentication</h6>
+                    {% if user.is_2fa_enabled %}
+                        <div class="alert alert-success">
+                            <i class="bi bi-check-circle"></i>
+                            <strong>Enabled</strong><br>
+                            Your account is protected with 2FA
+                        </div>
+                        
+                        <form method="POST" action="{{ url_for('auth.disable_2fa') }}" 
+                              onsubmit="return confirm('Are you sure you want to disable two-factor authentication? This will make your account less secure.');">
+                            {{ csrf_token() }}
+                            <button type="submit" class="btn btn-outline-warning btn-sm">
+                                <i class="bi bi-shield-x"></i> Disable 2FA
+                            </button>
+                        </form>
+                    {% else %}
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <strong>Setup Required</strong><br>
+                            Complete 2FA setup for better security
+                        </div>
+                        
+                        <a href="{{ url_for('auth.register') }}" class="btn btn-success btn-sm">
+                            <i class="bi bi-shield-check"></i> Setup 2FA
+                        </a>
+                    {% endif %}
+                </div>
+                
+                <hr>
+                
+                <h6>Security Score</h6>
+                <div class="progress mb-2">
+                    <div class="progress-bar {% if user.is_2fa_enabled %}bg-success{% else %}bg-warning{% endif %}" 
+                         style="width: {% if user.is_2fa_enabled %}100{% else %}60{% endif %}%">
+                    </div>
+                </div>
+                <small class="text-muted">
+                    {% if user.is_2fa_enabled %}
+                        Excellent - All security features enabled
+                    {% else %}
+                        Good - Enable 2FA to reach 100%
+                    {% endif %}
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h4><i class="bi bi-graph-up"></i> Account Activity</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <i class="bi bi-calendar-check display-6 text-primary"></i>
+                                <h6 class="mt-2">Account Age</h6>
+                                <h4>
+                                    {% if user.created_at %}
+                                        {{ ((user.created_at - user.created_at).days) if user.created_at else 0 }} days
+                                    {% else %}
+                                        New
+                                    {% endif %}
+                                </h4>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <i class="bi bi-shield-check display-6 text-success"></i>
+                                <h6 class="mt-2">Security Level</h6>
+                                <h4>
+                                    {% if user.is_2fa_enabled %}
+                                        High
+                                    {% else %}
+                                        Medium
+                                    {% endif %}
+                                </h4>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <i class="bi bi-clock-history display-6 text-info"></i>
+                                <h6 class="mt-2">Session Status</h6>
+                                <h4>Active</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card border-info">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-info-circle"></i> Account Security Information</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Authentication Methods</h6>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Password Authentication
+                                <span class="badge bg-success rounded-pill">Active</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Two-Factor Authentication
+                                <span class="badge bg-{% if user.is_2fa_enabled %}success{% else %}secondary{% endif %} rounded-pill">
+                                    {% if user.is_2fa_enabled %}Active{% else %}Inactive{% endif %}
+                                </span>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h6>Security Features</h6>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                CSRF Protection
+                                <span class="badge bg-success rounded-pill">Active</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Secure Session
+                                <span class="badge bg-success rounded-pill">Active</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                Password Encryption
+                                <span class="badge bg-success rounded-pill">Bcrypt</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info mt-3 mb-0">
+                    <i class="bi bi-lightbulb"></i>
+                    <strong>Security Tip:</strong> Your account benefits from multiple layers of security including 
+                    encrypted passwords, CSRF protection, secure sessions, and optional two-factor authentication. 
+                    All these features work together to keep your account safe from unauthorized access.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

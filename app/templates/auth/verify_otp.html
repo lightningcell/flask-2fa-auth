@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="auth-form">
+            <h2 class="text-center mb-4">
+                <i class="bi bi-shield-check"></i> Two-Factor Authentication
+            </h2>
+            
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i>
+                <strong>Security Step:</strong> Enter the 6-digit code from your authenticator app to complete login.
+            </div>
+            
+            <form method="POST" novalidate>
+                {{ form.hidden_tag() }}
+                
+                <!-- Token field -->
+                <div class="mb-3">
+                    {{ form.token.label(class="form-label") }}
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="bi bi-key"></i>
+                        </span>
+                        {{ form.token(class="form-control form-control-lg text-center" + (" is-invalid" if form.token.errors else ""), 
+                                    placeholder="000000", maxlength="6", style="letter-spacing: 0.5em;") }}
+                        {% if form.token.errors %}
+                            <div class="invalid-feedback">
+                                {% for error in form.token.errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="form-text">
+                        <i class="bi bi-clock"></i> Codes refresh every 30 seconds
+                    </div>
+                </div>
+                
+                <!-- Submit button -->
+                <div class="d-grid">
+                    {{ form.submit(class="btn btn-success btn-lg") }}
+                </div>
+            </form>
+            
+            <hr class="my-4">
+            
+            <div class="text-center">
+                <a href="{{ url_for('auth.login') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Back to Login
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-question-circle"></i> Trouble with 2FA?</h5>
+            </div>
+            <div class="card-body">
+                <h6>Common Issues:</h6>
+                <ul>
+                    <li><strong>Code not working?</strong> Make sure your device's time is synchronized</li>
+                    <li><strong>Lost your phone?</strong> Contact support for account recovery</li>
+                    <li><strong>App not installed?</strong> Download Google Authenticator or Authy</li>
+                </ul>
+                
+                <div class="alert alert-warning mt-3">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Security Notice:</strong> Each code can only be used once and expires after 30 seconds. 
+                    This prevents replay attacks and ensures your account remains secure.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-focus the token input and auto-submit when 6 digits are entered
+document.addEventListener('DOMContentLoaded', function() {
+    const tokenInput = document.getElementById('token');
+    if (tokenInput) {
+        tokenInput.focus();
+        
+        tokenInput.addEventListener('input', function(e) {
+            // Only allow digits
+            this.value = this.value.replace(/\D/g, '');
+            
+            // Auto-submit when 6 digits are entered
+            if (this.value.length === 6) {
+                // Small delay to show the complete code
+                setTimeout(() => {
+                    this.form.submit();
+                }, 200);
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

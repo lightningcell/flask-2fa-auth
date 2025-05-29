@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h3 class="mb-0">
+                    <i class="bi bi-check-circle"></i> Registration Successful!
+                </h3>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Welcome, {{ username }}!</strong> Your account has been created successfully. 
+                    To complete the setup, please scan the QR code below with your authenticator app.
+                </div>
+                
+                <h4 class="text-center mb-4">
+                    <i class="bi bi-qr-code"></i> Setup Two-Factor Authentication
+                </h4>
+                
+                <div class="qr-code-container">
+                    <img src="data:image/png;base64,{{ qr_code }}" 
+                         alt="QR Code for 2FA Setup" 
+                         class="img-fluid mb-3"
+                         style="max-width: 300px;">
+                    
+                    <p class="text-muted">
+                        Scan this QR code with your authenticator app
+                    </p>
+                </div>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <h5><i class="bi bi-list-ol"></i> Setup Instructions:</h5>
+                        <ol>
+                            <li>Download an authenticator app:
+                                <ul class="mt-2">
+                                    <li>Google Authenticator</li>
+                                    <li>Microsoft Authenticator</li>
+                                    <li>Authy</li>
+                                    <li>1Password</li>
+                                </ul>
+                            </li>
+                            <li>Open the app and tap "Add Account" or "+"</li>
+                            <li>Choose "Scan QR Code"</li>
+                            <li>Point your camera at the QR code above</li>
+                            <li>Your account will be added automatically</li>
+                        </ol>
+                    </div>
+                    <div class="col-md-6">
+                        <h5><i class="bi bi-shield-check"></i> Security Benefits:</h5>
+                        <ul>
+                            <li>Protects against password theft</li>
+                            <li>Prevents unauthorized access</li>
+                            <li>Works offline (no internet required)</li>
+                            <li>Industry-standard TOTP protocol</li>
+                            <li>Compatible with all major apps</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="alert alert-warning mt-4">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Important:</strong> Save your recovery codes or backup your authenticator app. 
+                    If you lose access to your authenticator, you may not be able to log in.
+                </div>
+                
+                <div class="text-center mt-4">
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-box-arrow-in-right"></i> Continue to Login
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-8 offset-md-2">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-question-circle"></i> Frequently Asked Questions</h5>
+            </div>
+            <div class="card-body">
+                <div class="accordion" id="faqAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingOne">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                                What if I can't scan the QR code?
+                            </button>
+                        </h2>
+                        <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                You can manually enter the secret key in your authenticator app. Look for an option like 
+                                "Enter code manually" or "Manual entry" in your app.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingTwo">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                                Which authenticator app should I use?
+                            </button>
+                        </h2>
+                        <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Google Authenticator is the most popular choice, but Microsoft Authenticator, Authy, 
+                                and 1Password also work excellently. Choose one that you're comfortable with.
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="headingThree">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree">
+                                Is this secure?
+                            </button>
+                        </h2>
+                        <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                Yes! This uses the industry-standard TOTP (Time-based One-Time Password) protocol, 
+                                which is used by major services like Google, Microsoft, and GitHub. The codes change 
+                                every 30 seconds and can't be reused.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

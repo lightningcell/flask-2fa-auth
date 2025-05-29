@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="jumbotron bg-primary text-white rounded p-5 mb-4">
+    <div class="container text-center">
+        <h1 class="display-4">
+            <i class="bi bi-shield-lock"></i> Flask 2FA Authentication
+        </h1>
+        <p class="lead">
+            Secure web application with two-factor authentication, built with security best practices.
+        </p>
+        {% if not current_user.is_authenticated %}
+        <div class="mt-4">
+            <a href="{{ url_for('auth.register') }}" class="btn btn-light btn-lg me-3">
+                <i class="bi bi-person-plus"></i> Get Started
+            </a>
+            <a href="{{ url_for('auth.login') }}" class="btn btn-outline-light btn-lg">
+                <i class="bi bi-box-arrow-in-right"></i> Sign In
+            </a>
+        </div>
+        {% else %}
+        <div class="mt-4">
+            <a href="{{ url_for('main.dashboard') }}" class="btn btn-light btn-lg">
+                <i class="bi bi-speedometer2"></i> Go to Dashboard
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-shield-check display-4 text-success mb-3"></i>
+                <h5 class="card-title">Two-Factor Authentication</h5>
+                <p class="card-text">
+                    Enhanced security with TOTP-based 2FA using industry-standard protocols.
+                    Compatible with Google Authenticator, Authy, and other popular apps.
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-lock display-4 text-primary mb-3"></i>
+                <h5 class="card-title">Secure by Design</h5>
+                <p class="card-text">
+                    Built with security best practices including CSRF protection, 
+                    bcrypt password hashing, secure sessions, and input validation.
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-code-slash display-4 text-info mb-3"></i>
+                <h5 class="card-title">Modern Flask App</h5>
+                <p class="card-text">
+                    Implements Flask application factory pattern, blueprints, 
+                    SQLAlchemy ORM, and follows Flask security recommendations.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h3><i class="bi bi-info-circle"></i> Security Features</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Authentication & Authorization</h5>
+                        <ul>
+                            <li><strong>Two-Factor Authentication:</strong> TOTP-based 2FA with PyOTP</li>
+                            <li><strong>Secure Password Storage:</strong> Bcrypt hashing with salt</li>
+                            <li><strong>Session Management:</strong> Flask-Login with secure settings</li>
+                            <li><strong>Login Protection:</strong> Strong session protection enabled</li>
+                        </ul>
+                        
+                        <h5 class="mt-4">Data Protection</h5>
+                        <ul>
+                            <li><strong>CSRF Protection:</strong> Automatic token validation on forms</li>
+                            <li><strong>SQL Injection Prevention:</strong> Parameterized queries</li>
+                            <li><strong>Input Validation:</strong> Server-side validation with WTForms</li>
+                            <li><strong>XSS Prevention:</strong> Automatic template escaping</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5>HTTP Security</h5>
+                        <ul>
+                            <li><strong>Security Headers:</strong> HSTS, X-Frame-Options, CSP</li>
+                            <li><strong>Secure Cookies:</strong> HTTPOnly, Secure, SameSite flags</li>
+                            <li><strong>Content Security Policy:</strong> Prevents code injection</li>
+                            <li><strong>HTTPS Enforcement:</strong> Production-ready configuration</li>
+                        </ul>
+                        
+                        <h5 class="mt-4">Application Security</h5>
+                        <ul>
+                            <li><strong>Database Security:</strong> Connection pooling and timeouts</li>
+                            <li><strong>Error Handling:</strong> Secure error pages without information disclosure</li>
+                            <li><strong>Logging:</strong> Security events logged for monitoring</li>
+                            <li><strong>Environment Configuration:</strong> Separate configs for dev/prod</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if not current_user.is_authenticated %}
+<div class="row mt-4">
+    <div class="col-md-12">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <h4><i class="bi bi-rocket"></i> Ready to Get Started?</h4>
+                <p class="lead">
+                    Create your secure account in minutes and experience enterprise-grade security.
+                </p>
+                <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg">
+                    <i class="bi bi-person-plus"></i> Create Account Now
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
