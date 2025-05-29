@@ -234,6 +234,64 @@ def disable_2fa():
     return redirect(url_for('main.profile'))
 
 
+@bp.route('/enable-2fa')
+@login_required
+def enable_2fa():
+    """
+    Enable 2FA for existing logged-in users.
+    
+    Security: Requires active login session.
+    """
+    if current_user.is_2fa_enabled:
+        flash('Two-factor authentication is already enabled for your account.', 'info')
+        return redirect(url_for('main.profile'))
+    
+    # Generate new TOTP secret if not exists
+    if not current_user.totp_secret:
+        current_user.generate_totp_secret()
+        db.session.commit()
+    
+    # Generate QR code for Google Authenticator
+    qr_code = current_user.generate_qr_code()
+    
+    return render_template('auth/enable_2fa.html', 
+                         qr_code=qr_code, 
+                         username=current_user.username,
+                         title='Enable Two-Factor Authentication')
+
+
+@bp.route('/verify-enable-2fa', methods=['POST'])
+@login_required
+def verify_enable_2fa():
+    """
+    Verify TOTP token and enable 2FA for existing user.
+    
+    Security: Requires active login session and valid TOTP token.
+    """
+    if current_user.is_2fa_enabled:
+        flash('Two-factor authentication is already enabled.', 'info')
+        return redirect(url_for('main.profile'))
+    
+    token = request.form.get('token', '').strip()
+    
+    if not token:
+        flash('Please enter the authentication code.', 'error')
+        return redirect(url_for('auth.enable_2fa'))
+    
+    if current_user.verify_totp(token):
+        # Enable 2FA for the user
+        current_user.enable_2fa()
+        
+        logger.info(f'2FA enabled for user: {current_user.username}')
+        flash('Two-factor authentication has been successfully enabled!', 'success')
+        
+        return redirect(url_for('main.profile'))
+    else:
+        logger.warning(f'Failed 2FA enable verification for user: {current_user.username}')
+        flash('Invalid authentication code. Please try again.', 'error')
+        return redirect(url_for('auth.enable_2fa'))
+
+
 def track_login_location(user):
     """
     Track user login location and handle suspicious login detection.

@@ -68,22 +68,20 @@
                             <strong>Enabled</strong><br>
                             Your account is protected with 2FA
                         </div>
-                        
-                        <form method="POST" action="{{ url_for('auth.disable_2fa') }}" 
+                          <form method="POST" action="{{ url_for('auth.disable_2fa') }}" 
                               onsubmit="return confirm('Are you sure you want to disable two-factor authentication? This will make your account less secure.');">
-                            {{ csrf_token() }}
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <button type="submit" class="btn btn-outline-warning btn-sm">
                                 <i class="bi bi-shield-x"></i> Disable 2FA
                             </button>
                         </form>
-                    {% else %}
-                        <div class="alert alert-warning">
+                    {% else %}                        <div class="alert alert-warning">
                             <i class="bi bi-exclamation-triangle"></i>
                             <strong>Setup Required</strong><br>
                             Complete 2FA setup for better security
                         </div>
                         
-                        <a href="{{ url_for('auth.register') }}" class="btn btn-success btn-sm">
+                        <a href="{{ url_for('auth.enable_2fa') }}" class="btn btn-success btn-sm">
                             <i class="bi bi-shield-check"></i> Setup 2FA
                         </a>
                     {% endif %}

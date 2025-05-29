@@ -94,13 +94,12 @@ class User(UserMixin, db.Model):
         totp = pyotp.TOTP(self.totp_secret)
         # Verify token with a 1-period window (30 seconds before/after)
         return totp.verify(token, valid_window=1)
-    
     def generate_qr_code(self, issuer_name='Flask-2FA-App'):
         """
         Generate a QR code for the TOTP URI.
         
         Returns:
-            str: Base64-encoded PNG image of the QR code
+            str: HTML img tag with base64-encoded PNG image of the QR code
         """
         uri = self.generate_totp_uri(issuer_name)
         
@@ -122,7 +121,8 @@ class User(UserMixin, db.Model):
         img.save(img_buffer, format='PNG')
         img_buffer.seek(0)
         
-        return base64.b64encode(img_buffer.getvalue()).decode()
+        base64_img = base64.b64encode(img_buffer.getvalue()).decode()
+        return f'<img src="data:image/png;base64,{base64_img}" class="img-fluid" alt="QR Code for 2FA Setup" style="max-width: 200px;">'
     
     def enable_2fa(self):
         """Enable two-factor authentication for the user."""

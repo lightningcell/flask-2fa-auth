@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header text-center">
+                <h3><i class="bi bi-shield-check"></i> Enable Two-Factor Authentication</h3>
+                <p class="mb-0 text-muted">Secure your account with an additional layer of protection</p>
+            </div>
+            <div class="card-body">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'danger' if category == 'error' else ('warning' if category == 'warning' else 'success') }} alert-dismissible fade show">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5><i class="bi bi-qr-code"></i> Step 1: Scan QR Code</h5>
+                        <div class="text-center mb-3">
+                            <div class="qr-code-container">
+                                {{ qr_code|safe }}
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <h6><i class="bi bi-info-circle"></i> Instructions:</h6>
+                            <ol class="mb-0">
+                                <li>Install an authenticator app like <strong>Google Authenticator</strong> or <strong>Authy</strong></li>
+                                <li>Open the app and scan this QR code</li>
+                                <li>Enter the 6-digit code from your app below</li>
+                            </ol>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5><i class="bi bi-key"></i> Step 2: Verify Setup</h5>
+                        
+                        <form method="POST" action="{{ url_for('auth.verify_enable_2fa') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            
+                            <div class="mb-3">
+                                <label for="token" class="form-label">Authentication Code</label>
+                                <input type="text" 
+                                       id="token" 
+                                       name="token" 
+                                       class="form-control form-control-lg text-center" 
+                                       placeholder="000000"
+                                       maxlength="6" 
+                                       pattern="[0-9]{6}" 
+                                       required 
+                                       autocomplete="off"
+                                       style="letter-spacing: 0.5em; font-family: monospace;">
+                                <div class="form-text">Enter the 6-digit code from your authenticator app</div>
+                            </div>
+                            
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-success btn-lg">
+                                    <i class="bi bi-shield-check"></i> Enable 2FA
+                                </button>
+                                <a href="{{ url_for('main.profile') }}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-arrow-left"></i> Cancel
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <hr class="my-4">
+                
+                <div class="row">
+                    <div class="col-12">
+                        <h6><i class="bi bi-shield-exclamation"></i> Security Benefits</h6>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="text-center">
+                                    <i class="bi bi-lock text-success" style="font-size: 2rem;"></i>
+                                    <h6 class="mt-2">Enhanced Security</h6>
+                                    <small class="text-muted">Protect against password theft</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center">
+                                    <i class="bi bi-phone text-primary" style="font-size: 2rem;"></i>
+                                    <h6 class="mt-2">Mobile Protection</h6>
+                                    <small class="text-muted">Secure codes on your device</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center">
+                                    <i class="bi bi-globe text-warning" style="font-size: 2rem;"></i>
+                                    <h6 class="mt-2">Location Tracking</h6>
+                                    <small class="text-muted">Monitor suspicious logins</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.qr-code-container {
+    background-color: white;
+    padding: 20px;
+    border-radius: 10px;
+    display: inline-block;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.qr-code-container svg {
+    max-width: 200px;
+    height: auto;
+}
+
+@media (max-width: 768px) {
+    .qr-code-container svg {
+        max-width: 150px;
+    }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tokenInput = document.getElementById('token');
+    
+    // Auto-focus on token input
+    tokenInput.focus();
+    
+    // Auto-format input (digits only)
+    tokenInput.addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\D/g, '');
+        if (value.length <= 6) {
+            e.target.value = value;
+        }
+    });
+    
+    // Auto-submit when 6 digits entered
+    tokenInput.addEventListener('input', function(e) {
+        if (e.target.value.length === 6) {
+            // Small delay to show the complete code
+            setTimeout(() => {
+                e.target.form.submit();
+            }, 500);
+        }
+    });
+});
+</script>
+{% endblock %}
