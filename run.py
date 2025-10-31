@@ -107,6 +107,9 @@ if __name__ == '__main__':
     
     # Run the application
     # Note: For production, use a proper WSGI server like Gunicorn
+    
+    # TÜRKÇE YORUMU FARK EDİP ISSUE OLUŞTURACAK MI ACABA
+    
     app.run(
         host='127.0.0.1',  # Change to '0.0.0.0' if you need external access
         port=port,
