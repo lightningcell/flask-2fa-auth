@@ -43,14 +43,53 @@ if (!diff) {
 if (diff.length > MAX_DIFF_CHARS) diff = diff.slice(0, MAX_DIFF_CHARS) + '\n...[truncated]';
 
 // Build prompt requesting ONLY JSON output
+// New format: return a JSON object. Prefer the new shape with an array of problems:
+// {
+//   problems: [
+//     {
+//       file: "path/to/file",
+//       start_line: 123,         // optional
+//       end_line: 130,           // optional
+//       snippet: "code snippet or diff excerpt", // optional
+//       title: "short title for this problem",
+//       body: "detailed description for this problem",
+//       labels: ["bug"],        // optional
+//       assignees: ["alice"]    // optional
+//     }
+//   ],
+//   title: "overall issue title (optional)",
+//   body: "overall issue body (optional)",
+//   labels: [],
+//   assignees: []
+// }
+// For backward compatibility the AI may return the older single-object format with problem_found/title/body.
 const prompt = `
-You are an automated code reviewer. Analyze the following git diff and determine whether there is a problem that requires opening a GitHub issue.
-Return ONLY a single JSON object (no extra text, no surrounding backticks) with these fields:
-- problem_found: true or false
-- title: short issue title (string) — present if problem_found is true
-- body: detailed issue body (string) — present if problem_found is true
-- labels: array of label strings (can be empty)
-- assignees: array of usernames to assign (can be empty)
+You are an automated code reviewer. Analyze the following git diff and identify all distinct problems or issues that a developer should address.
+
+Return ONLY a single JSON object (no extra text, no surrounding backticks). Prefer this shape:
+
+{
+  "problems": [
+    {
+      "file": "path/to/file",
+      "start_line": 10,
+      "end_line": 12,
+      "snippet": "relevant code lines or small diff excerpt",
+      "title": "Short title for this specific problem",
+      "body": "Detailed description and suggested fix for this specific problem",
+      "labels": ["bug","security"],
+      "assignees": ["username"]
+    }
+  ],
+  "title": "Optional overall title",
+  "body": "Optional overall body summary",
+  "labels": ["ai-review"],
+  "assignees": []
+}
+
+If no problems are found, return { "problems": [] } or { "problem_found": false } (for backward compatibility).
+
+Important: do not include any markdown, commentary, or non-JSON text — only the JSON object.
 
 Diff:
 ${diff}
@@ -65,7 +104,7 @@ function openaiChat(prompt, model) {
         { role: 'system', content: 'You are a precise code-review assistant. Answer only with JSON as requested.' },
         { role: 'user', content: prompt }
       ],
-      max_tokens: 800,
+      max_tokens: 3000,
       temperature: 0.0
     });
 
@@ -256,14 +295,21 @@ function safeBool(val) {
       process.exit(0); // assume no problem to avoid false positives
     }
 
-    // Interpret the AI's problem_found robustly (accept booleans, strings like 'true')
-    if (!safeBool(aiObj.problem_found)) {
-      console.log('AI determined no problem.');
-      process.exit(0);
+    // New behavior: accept either the legacy single-issue response or the new
+    // { problems: [...] } array response. Prefer problems array to allow multiple comments.
+    const problems = Array.isArray(aiObj.problems) ? aiObj.problems : null;
+
+    // If no problems array was provided, fall back to legacy problem_found flag
+    if (!problems || problems.length === 0) {
+      if (!safeBool(aiObj.problem_found)) {
+        console.log('AI determined no problem.');
+        process.exit(0);
+      }
     }
 
-    const title = aiObj.title || 'Automated code review found an issue';
-    const body = aiObj.body || 'AI reported an issue. Please review the diff and details.';
+    // Top-level title/body/labels/assignees will be used to create the issue.
+    const topTitle = aiObj.title || (problems && problems.length ? `Automated code review — ${problems.length} issues found` : 'Automated code review found an issue');
+    const topBody = aiObj.body || (problems && problems.length ? `The AI detected ${problems.length} problem(s). Detailed comments follow.` : 'AI reported an issue. Please review the diff and details.');
 
     // Normalize labels: accept array or comma-separated string from AI
     let labels = [];
@@ -295,23 +341,42 @@ function safeBool(val) {
       }
     }
 
-    console.log('Preparing to file or comment on issue:', title);
-    // If an open issue with same title exists, add a comment instead of creating a new issue
+    console.log('Preparing to create an issue:', topTitle);
+    // Create a single issue for this run and then post one comment per problem (if multiple problems provided).
+    let created = null;
     try {
-      const existing = await findOpenIssueByTitle(title);
-      if (existing) {
-        console.log('Found existing open issue #' + existing.number + ' — adding comment.');
-        const comment = await createComment(existing.number, body + '\n\n_Comment added by automated code review._');
-        console.log('Comment posted:', comment.html_url || comment.url || ('#' + existing.number));
-        process.exit(0);
-      }
+      created = await createIssue(topTitle, topBody, labels, assignees);
+      console.log('Issue created:', created.html_url || created.url || ('#' + created.number));
     } catch (err) {
-      console.warn('Error checking for existing issues (will attempt to create):', err.message);
+      console.error('Failed to create issue:', err.message || err);
+      process.exit(1);
     }
 
-    console.log('Creating issue:', title);
-    const created = await createIssue(title, body, labels, assignees);
-    console.log('Issue created:', created.html_url || created.url);
+    // If problems array exists, post each as a separate comment with file/line/snippet info
+    if (problems && problems.length) {
+      for (let i = 0; i < problems.length; i++) {
+        const p = problems[i] || {};
+        const pTitle = p.title || `Issue ${i + 1}`;
+        const fileLine = p.file ? `File: \`${p.file}\`` : '';
+        const lineRange = (p.start_line || p.end_line) ? ` (lines ${p.start_line || '?'}${p.end_line ? '-' + p.end_line : ''})` : '';
+        const pBody = p.body || '';
+        const snippet = p.snippet ? `\n\n\`\`\`\n${p.snippet}\n\`\`\`` : '';
+
+        const commentBody = `### ${pTitle}\n\n${fileLine}${lineRange}\n\n${pBody}${snippet}\n\n_Reported by automated code review._`;
+        try {
+          const comment = await createComment(created.number, commentBody);
+          console.log('Posted comment for problem', i + 1, comment.html_url || comment.url || ('#' + created.number));
+        } catch (err) {
+          console.warn('Failed to post comment for problem', i + 1, err.message || err);
+        }
+      }
+      process.exit(0);
+    }
+
+    // Legacy single-issue flow: if no problems array but problem_found was true, use legacy fields
+    const legacyTitle = topTitle;
+    const legacyBody = topBody;
+    console.log('No problems array present; created single legacy issue.');
   } catch (err) {
     console.error('Error in AI review script:', err);
     process.exit(1);
