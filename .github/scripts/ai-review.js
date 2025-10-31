@@ -131,6 +131,113 @@ function createIssue(title, body, labels = [], assignees = []) {
   });
 }
 
+function getRepoLabels() {
+  return new Promise((resolve, reject) => {
+    const [owner, repo] = REPO.split('/');
+    const options = {
+      hostname: 'api.github.com',
+      path: `/repos/${owner}/${repo}/labels?per_page=100`,
+      method: 'GET',
+      headers: {
+        'User-Agent': 'ai-code-review-action',
+        'Accept': 'application/vnd.github+json',
+        'Authorization': `Bearer ${GITHUB_TOKEN}`
+      }
+    };
+    const req = https.request(options, res => {
+      let data = '';
+      res.on('data', d => data += d);
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          const names = Array.isArray(parsed) ? parsed.map(l => l.name) : [];
+          resolve(names);
+        } catch (err) {
+          reject(new Error('GitHub labels response parse error: ' + err.message + '\nRaw:' + data));
+        }
+      });
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+function findOpenIssueByTitle(title) {
+  return new Promise((resolve, reject) => {
+    const [owner, repo] = REPO.split('/');
+    const options = {
+      hostname: 'api.github.com',
+      path: `/repos/${owner}/${repo}/issues?state=open&per_page=100`,
+      method: 'GET',
+      headers: {
+        'User-Agent': 'ai-code-review-action',
+        'Accept': 'application/vnd.github+json',
+        'Authorization': `Bearer ${GITHUB_TOKEN}`
+      }
+    };
+    const req = https.request(options, res => {
+      let data = '';
+      res.on('data', d => data += d);
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (!Array.isArray(parsed)) return resolve(null);
+          const found = parsed.find(i => (i.title || '').trim().toLowerCase() === (title || '').trim().toLowerCase());
+          resolve(found || null);
+        } catch (err) {
+          reject(new Error('GitHub issues response parse error: ' + err.message + '\nRaw:' + data));
+        }
+      });
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+function createComment(issue_number, body) {
+  return new Promise((resolve, reject) => {
+    const post = JSON.stringify({ body });
+    const [owner, repo] = REPO.split('/');
+    const options = {
+      hostname: 'api.github.com',
+      path: `/repos/${owner}/${repo}/issues/${issue_number}/comments`,
+      method: 'POST',
+      headers: {
+        'User-Agent': 'ai-code-review-action',
+        'Accept': 'application/vnd.github+json',
+        'Authorization': `Bearer ${GITHUB_TOKEN}`,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(post)
+      }
+    };
+    const req = https.request(options, res => {
+      let data = '';
+      res.on('data', d => data += d);
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          resolve(parsed);
+        } catch (err) {
+          reject(new Error('GitHub comment response parse error: ' + err.message + '\nRaw:' + data));
+        }
+      });
+    });
+    req.on('error', reject);
+    req.write(post);
+    req.end();
+  });
+}
+
+function safeBool(val) {
+  if (typeof val === 'boolean') return val;
+  if (typeof val === 'number') return val !== 0;
+  if (typeof val === 'string') {
+    const v = val.trim().toLowerCase();
+    return v === 'true' || v === '1' || v === 'yes';
+  }
+  return false;
+}
+
 (async () => {
   try {
     console.log('Calling OpenAI to analyze diff (truncated to %d chars)', MAX_DIFF_CHARS);
@@ -149,15 +256,58 @@ function createIssue(title, body, labels = [], assignees = []) {
       process.exit(0); // assume no problem to avoid false positives
     }
 
-    if (!aiObj.problem_found) {
+    // Interpret the AI's problem_found robustly (accept booleans, strings like 'true')
+    if (!safeBool(aiObj.problem_found)) {
       console.log('AI determined no problem.');
       process.exit(0);
     }
 
     const title = aiObj.title || 'Automated code review found an issue';
     const body = aiObj.body || 'AI reported an issue. Please review the diff and details.';
-    const labels = (Array.isArray(aiObj.labels) && aiObj.labels.length) ? aiObj.labels : DEFAULT_LABELS;
+
+    // Normalize labels: accept array or comma-separated string from AI
+    let labels = [];
+    if (Array.isArray(aiObj.labels) && aiObj.labels.length) {
+      labels = aiObj.labels.map(s => String(s).trim()).filter(Boolean);
+    } else if (typeof aiObj.labels === 'string' && aiObj.labels.trim()) {
+      labels = aiObj.labels.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    if (!labels.length) labels = DEFAULT_LABELS;
+
+    // Normalize assignees
     const assignees = (Array.isArray(aiObj.assignees) && aiObj.assignees.length) ? aiObj.assignees : (DEFAULT_ASSIGNEE ? [DEFAULT_ASSIGNEE] : []);
+
+    // Validate labels against repository labels; fall back to DEFAULT_LABELS when none match
+    let repoLabels = [];
+    try {
+      repoLabels = await getRepoLabels();
+    } catch (err) {
+      console.warn('Could not fetch repository labels, proceeding without label validation:', err.message);
+    }
+    if (Array.isArray(repoLabels) && repoLabels.length) {
+      const validated = labels.filter(l => repoLabels.includes(l));
+      if (validated.length) labels = validated;
+      else {
+        // try default labels
+        const validatedDefault = DEFAULT_LABELS.filter(l => repoLabels.includes(l));
+        if (validatedDefault.length) labels = validatedDefault;
+        else labels = []; // no matching labels in repo
+      }
+    }
+
+    console.log('Preparing to file or comment on issue:', title);
+    // If an open issue with same title exists, add a comment instead of creating a new issue
+    try {
+      const existing = await findOpenIssueByTitle(title);
+      if (existing) {
+        console.log('Found existing open issue #' + existing.number + ' — adding comment.');
+        const comment = await createComment(existing.number, body + '\n\n_Comment added by automated code review._');
+        console.log('Comment posted:', comment.html_url || comment.url || ('#' + existing.number));
+        process.exit(0);
+      }
+    } catch (err) {
+      console.warn('Error checking for existing issues (will attempt to create):', err.message);
+    }
 
     console.log('Creating issue:', title);
     const created = await createIssue(title, body, labels, assignees);
