@@ -3,7 +3,7 @@ name: AI Code Review
 on:
   push:
     branches:
-      - development
+      - main
 
 permissions:
   contents: read
