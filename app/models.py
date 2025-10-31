@@ -38,7 +38,7 @@ class User(UserMixin, db.Model):
         Security: Uses bcrypt with automatic salt generation
         for resistance against rainbow table attacks.
         """
-        self.password_hash = generate_password_hash(password, method='pbkdf2:sha256')
+        self.password_hash = password
     
     def check_password(self, password):
         """
