@@ -1,0 +1,41 @@
+name: AI Code Review
+
+on:
+  push:
+    branches:
+      - development
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  DEFAULT_ASSIGNEE: "lightningcell"
+  DEFAULT_LABELS: "ai-review"
+  MAX_DIFF_CHARS: "20000"
+  OPENAI_MODEL: "gpt-4o-mini"
+
+jobs:
+  ai-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Run AI review script
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          DEFAULT_ASSIGNEE: ${{ env.DEFAULT_ASSIGNEE }}
+          DEFAULT_LABELS: ${{ env.DEFAULT_LABELS }}
+          MAX_DIFF_CHARS: ${{ env.MAX_DIFF_CHARS }}
+          OPENAI_MODEL: ${{ env.OPENAI_MODEL }}
+        run: |
+          node .github/scripts/ai-review.js
