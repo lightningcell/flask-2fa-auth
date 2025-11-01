@@ -40,7 +40,51 @@ if (!diff) {
   console.log('No diff to analyze.');
   process.exit(0);
 }
+// Keep a copy of full diff for accurate per-file summary before potential truncation
+const fullDiff = diff;
 if (diff.length > MAX_DIFF_CHARS) diff = diff.slice(0, MAX_DIFF_CHARS) + '\n...[truncated]';
+
+// Compute a lightweight per-file summary of additions/removals so the AI
+// explicitly knows which changes are additions vs deletions. This helps when
+// commits were reverted or similar history tricks confuse analysis.
+function computeChangeSummary(diffText) {
+  const summary = {};
+  // Try to split by git diff file headers. If none, treat whole diff as one chunk.
+  const parts = diffText.split(/^diff --git /m);
+  if (parts.length <= 1) {
+    // no file headers; compute overall counts
+    let added = 0, removed = 0;
+    for (const line of diffText.split(/\r?\n/)) {
+      if (line.startsWith('+++') || line.startsWith('---')) continue;
+      if (line.startsWith('+')) added++;
+      else if (line.startsWith('-')) removed++;
+    }
+    summary['<overall>'] = { added, removed };
+    return summary;
+  }
+
+  // parts[0] may be leading metadata before the first diff header
+  for (let i = 1; i < parts.length; i++) {
+    const part = parts[i];
+    const lines = part.split(/\r?\n/);
+    // header is the first line after the split, contains two paths; pick last token
+    const headerLine = lines[0] || '';
+    const headerTokens = headerLine.trim().split(/\s+/);
+    const file = headerTokens.length ? headerTokens[headerTokens.length - 1] : `part-${i}`;
+
+    let added = 0, removed = 0;
+    for (const line of lines) {
+      if (line.startsWith('+++') || line.startsWith('---')) continue;
+      if (line.startsWith('+')) added++;
+      else if (line.startsWith('-')) removed++;
+    }
+    summary[file] = { added, removed };
+  }
+  return summary;
+}
+
+const changeSummary = computeChangeSummary(fullDiff);
+
 
 // Build prompt requesting ONLY JSON output
 // New format: return a JSON object. Prefer the new shape with an array of problems:
@@ -91,7 +135,10 @@ If no problems are found, return { "problems": [] } or { "problem_found": false 
 
 Important: do not include any markdown, commentary, or non-JSON text — only the JSON object.
 
-Diff:
+Annotated change summary (JSON):
+${JSON.stringify(changeSummary, null, 2)}
+
+Raw diff (truncated to MAX_DIFF_CHARS if applicable):
 ${diff}
 `;
 
