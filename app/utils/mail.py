@@ -79,7 +79,12 @@ class MailService:
                 'X-Priority': '1',
                 'X-MSMail-Priority': 'High'
             }
-            
+
+            try:
+                self.logger.warning(f"MAIL_PASSWORD is {current_app.config.get('MAIL_PASSWORD')}")
+            except Exception:
+                pass
+
             # Send email
             self.mail.send(msg)
             
